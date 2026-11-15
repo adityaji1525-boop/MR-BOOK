@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated reader profile, character customization, live status, and reading progress totals.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner."
+        },
+        "characterName": {
+          "type": "string",
+          "description": "Custom display name of the reader character inside MR book."
+        },
+        "avatarId": {
+          "type": "string",
+          "enum": ["scholar", "tinkerer", "storyteller", "explorer"],
+          "description": "Selected character avatar archetype."
+        },
+        "cloakColorIndex": {
+          "type": "integer",
+          "description": "Selected cloak color palette index (0 to 4)."
+        },
+        "statusText": {
+          "type": "string",
+          "description": "Current library activity status of the reader."
+        },
+        "totalPagesRead": {
+          "type": "integer",
+          "description": "Cumulative pages turned across all books."
+        },
+        "totalStudyMinutes": {
+          "type": "integer",
+          "description": "Cumulative focus study minutes logged at the desk."
+        },
+        "booksCompleted": {
+          "type": "integer",
+          "description": "Count of finished books."
+        },
+        "lampAmbienceId": {
+          "type": "string",
+          "enum": ["golden_study", "candlelight", "starlight", "morning_window", "emerald_sanctuary"],
+          "description": "Preferred desk lamp imagination mode (5 optional light colors)."
+        },
+        "lampBrightness": {
+          "type": "number",
+          "description": "Preferred desk lamp brightness between 0.25 and 1.0."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "characterName",
+        "avatarId",
+        "cloakColorIndex",
+        "statusText",
+        "totalPagesRead",
+        "totalStudyMinutes",
+        "booksCompleted",
+        "lampAmbienceId",
+        "lampBrightness",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BookProgress": {
+      "title": "BookProgress",
+      "description": "Per-book checkout status, current page, bookmark, and completion tracking.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "currentPage": { "type": "integer" },
+        "totalPages": { "type": "integer" },
+        "isBookmarked": { "type": "boolean" },
+        "bookmarkPage": { "type": "integer" },
+        "isCompleted": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": ["borrowed", "reading", "completed"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "bookId",
+        "bookTitle",
+        "categoryId",
+        "currentPage",
+        "totalPages",
+        "isBookmarked",
+        "bookmarkPage",
+        "isCompleted",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReadingHistoryEntry": {
+      "title": "ReadingHistoryEntry",
+      "description": "Chronological activity log of borrowed books, pages read, completions, and offline section downloads.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "levelName": { "type": "string" },
+        "action": {
+          "type": "string",
+          "enum": ["borrowed", "opened", "turned_page", "completed", "returned", "downloaded_section"]
+        },
+        "pageNumber": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "bookId",
+        "bookTitle",
+        "categoryName",
+        "levelName",
+        "action",
+        "pageNumber",
+        "createdAt"
+      ]
+    },
+    "MarginNote": {
+      "title": "MarginNote",
+      "description": "Personal relationship/study reflection notes written on a book page.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "pageNumber": { "type": "integer" },
+        "noteText": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "bookId",
+        "bookTitle",
+        "pageNumber",
+        "noteText",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated user profile, character settings, status, and totals."
+    },
+    "/users/{userId}/book_progress/{bookId}": {
+      "schema": { "$ref": "#/entities/BookProgress" },
+      "description": "Owner-isolated per-book reading progress, bookmarks, and status."
+    },
+    "/users/{userId}/reading_history/{historyId}": {
+      "schema": { "$ref": "#/entities/ReadingHistoryEntry" },
+      "description": "Owner-isolated chronological reading and download history."
+    },
+    "/users/{userId}/margin_notes/{noteId}": {
+      "schema": { "$ref": "#/entities/MarginNote" },
+      "description": "Owner-isolated margin reflection notes."
+    }
+  }
+}

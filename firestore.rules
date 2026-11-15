@@ -1,0 +1,223 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.characterName is string &&
+             data.characterName.size() >= 1 && data.characterName.size() <= 30 &&
+             data.avatarId is string &&
+             data.avatarId in ['scholar', 'tinkerer', 'storyteller', 'explorer'] &&
+             data.cloakColorIndex is int &&
+             data.cloakColorIndex >= 0 && data.cloakColorIndex <= 4 &&
+             data.statusText is string &&
+             data.statusText.size() >= 1 && data.statusText.size() <= 80 &&
+             data.totalPagesRead is int &&
+             data.totalPagesRead >= 0 &&
+             data.totalStudyMinutes is int &&
+             data.totalStudyMinutes >= 0 &&
+             data.booksCompleted is int &&
+             data.booksCompleted >= 0 &&
+             data.lampAmbienceId is string &&
+             data.lampAmbienceId in ['golden_study', 'candlelight', 'starlight', 'morning_window', 'emerald_sanctuary'] &&
+             data.lampBrightness is number &&
+             data.lampBrightness >= 0.2 && data.lampBrightness <= 1.0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBookProgress(data, userId, bookId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.bookId is string &&
+             data.bookId == bookId &&
+             data.bookId.size() >= 1 && data.bookId.size() <= 64 &&
+             data.bookTitle is string &&
+             data.bookTitle.size() >= 1 && data.bookTitle.size() <= 120 &&
+             data.categoryId is string &&
+             data.categoryId.size() >= 1 && data.categoryId.size() <= 32 &&
+             data.currentPage is int &&
+             data.currentPage >= 0 && data.currentPage <= 500 &&
+             data.totalPages is int &&
+             data.totalPages >= 1 && data.totalPages <= 500 &&
+             data.isBookmarked is bool &&
+             data.bookmarkPage is int &&
+             data.bookmarkPage >= 0 && data.bookmarkPage <= 500 &&
+             data.isCompleted is bool &&
+             data.status is string &&
+             data.status in ['borrowed', 'reading', 'completed'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReadingHistory(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.bookId is string &&
+             data.bookId.size() >= 1 && data.bookId.size() <= 64 &&
+             data.bookTitle is string &&
+             data.bookTitle.size() >= 1 && data.bookTitle.size() <= 120 &&
+             data.categoryName is string &&
+             data.categoryName.size() >= 1 && data.categoryName.size() <= 48 &&
+             data.levelName is string &&
+             data.levelName.size() >= 1 && data.levelName.size() <= 32 &&
+             data.action is string &&
+             data.action in ['borrowed', 'opened', 'turned_page', 'completed', 'returned', 'downloaded_section'] &&
+             data.pageNumber is int &&
+             data.pageNumber >= 0 && data.pageNumber <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidMarginNote(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.bookId is string &&
+             data.bookId.size() >= 1 && data.bookId.size() <= 64 &&
+             data.bookTitle is string &&
+             data.bookTitle.size() >= 1 && data.bookTitle.size() <= 120 &&
+             data.pageNumber is int &&
+             data.pageNumber >= 0 && data.pageNumber <= 500 &&
+             data.noteText is string &&
+             data.noteText.size() >= 1 && data.noteText.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'characterName', 'avatarId', 'cloakColorIndex',
+                         'statusText', 'totalPagesRead', 'totalStudyMinutes',
+                         'booksCompleted', 'lampAmbienceId', 'lampBrightness',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'characterName', 'avatarId', 'cloakColorIndex',
+                         'statusText', 'totalPagesRead', 'totalStudyMinutes',
+                         'booksCompleted', 'lampAmbienceId', 'lampBrightness',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'characterName', 'avatarId', 'cloakColorIndex',
+                         'statusText', 'totalPagesRead', 'totalStudyMinutes',
+                         'booksCompleted', 'lampAmbienceId', 'lampBrightness', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /book_progress/{bookId} {
+        allow get: if isOwner(userId) && isValidId(bookId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(bookId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'bookId', 'bookTitle', 'categoryId',
+                           'currentPage', 'totalPages', 'isBookmarked',
+                           'bookmarkPage', 'isCompleted', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'bookId', 'bookTitle', 'categoryId',
+                           'currentPage', 'totalPages', 'isBookmarked',
+                           'bookmarkPage', 'isCompleted', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidBookProgress(incoming(), userId, bookId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(bookId) &&
+                         isValidBookProgress(incoming(), userId, bookId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().bookId == existing().bookId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'bookTitle', 'categoryId', 'currentPage', 'totalPages',
+                           'isBookmarked', 'bookmarkPage', 'isCompleted', 'status', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(bookId);
+      }
+
+      match /reading_history/{historyId} {
+        allow get: if isOwner(userId) && isValidId(historyId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(historyId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'bookId', 'bookTitle', 'categoryName',
+                           'levelName', 'action', 'pageNumber', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'bookId', 'bookTitle', 'categoryName',
+                           'levelName', 'action', 'pageNumber', 'createdAt'
+                         ]) &&
+                         isValidReadingHistory(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(historyId);
+      }
+
+      match /margin_notes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'bookId', 'bookTitle', 'pageNumber', 'noteText', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'bookId', 'bookTitle', 'pageNumber', 'noteText', 'createdAt'
+                         ]) &&
+                         isValidMarginNote(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+    }
+  }
+}

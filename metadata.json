@@ -1,0 +1,6 @@
+{
+  "name": "MR BOOK",
+  "description": "An interactive game-like book library spanning school to professional levels with customizable characters, numbered bookshelves, a librarian guide, glowing desk lamps, and realistic page-turning study views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
